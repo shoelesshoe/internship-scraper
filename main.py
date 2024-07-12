@@ -13,17 +13,11 @@ PAGE_3_HTML = '''
 '''
 pages = [PAGE_1_HTML, PAGE_2_HTML, PAGE_3_HTML]
 
-class ParsedItemLocators:
-    """
-    Locators for an item in the HTML page.
-
-    This allows us to easily see what our code will be looking at as well as change it quickly if we notice it is now different.
-    """
-    JOB_NAME_LOCATOR = 'span[title="Job Title"]'
-    COMPANY_NAME_LOCATOR = 'div[title="Company"]'
-    JOB_DESC = 'div[title="Required skill"]'
-    LOCATION_LOCATOR = 'div.bx--tag.bx--tag--purple'
-    SALARY_LOCATOR = 'div.bx--tag.bx--tag--blue'
+JOB_NAME_LOCATOR = 'span[title="Job Title"]'
+COMPANY_NAME_LOCATOR = 'div[title="Company"]'
+JOB_DESC = 'div[title="Required skill"]'
+REGION_LOCATOR = 'div.bx--tag.bx--tag--purple'
+SALARY_LOCATOR = 'div.bx--tag.bx--tag--blue'
 
 class ParsedItem:
     """
@@ -35,8 +29,7 @@ class ParsedItem:
 
     @property
     def jobNames(self):
-        locator = ParsedItemLocators.JOB_NAME_LOCATOR
-        selected = self.soup.select(locator)
+        selected = self.soup.select(JOB_NAME_LOCATOR)
         jobNames = []
         for name in selected:
             jobNames.append(name.string)
@@ -44,8 +37,7 @@ class ParsedItem:
 
     @property
     def companyNames(self):
-        locator = ParsedItemLocators.COMPANY_NAME_LOCATOR
-        selected = self.soup.select(locator)
+        selected = self.soup.select(COMPANY_NAME_LOCATOR)
         companyNames = []
         for name in selected:
             companyNames.append(name.string)
@@ -53,26 +45,23 @@ class ParsedItem:
 
     @property
     def jobDescs(self):
-        locator = ParsedItemLocators.JOB_DESC
-        selected = self.soup.select(locator)
+        selected = self.soup.select(JOB_DESC)
         jobDescs = []
         for desc in selected:
-            jobDescs.append(desc.text[12:])
+            jobDescs.append(desc.text[12:])  # remove "Key Skills:"
         return jobDescs
 
     @property
-    def jobLocations(self):
-        locator = ParsedItemLocators.LOCATION_LOCATOR
-        selected = self.soup.select(locator)
-        jobLocations = []
-        for location in selected:
-            jobLocations.append(location.string)
-        return jobLocations[1::2]  # estimated commute times are the odd elements, locations are the even elements
+    def jobRegions(self):
+        selected = self.soup.select(REGION_LOCATOR)
+        jobRegions = []
+        for region in selected:
+            jobRegions.append(region.string)
+        return jobRegions[1::2]  # estimated commute times are the odd elements, locations are the even elements
 
     @property
     def jobSalaries(self):
-        locator = ParsedItemLocators.SALARY_LOCATOR
-        selected = self.soup.select(locator)
+        selected = self.soup.select(SALARY_LOCATOR)
         jobSalaries = []
         for salary in selected:
             jobSalaries.append(salary.string)
@@ -82,27 +71,38 @@ class ParsedItem:
 jobNamesList = []
 companyNamesList = []
 jobDescsList = []
-jobLocationsList = []
+jobRegionsList = []
 jobSalariesList = []
+jobLocationsList = []
 
 for page in pages:
     item = ParsedItem(page)
     jobNamesList.extend(item.jobNames)
     companyNamesList.extend(item.companyNames)
     jobDescsList.extend(item.jobDescs)
-    jobLocationsList.extend(item.jobLocations)
-    jobSalariesList.extend(item.jobSalaries)
+    jobRegionsList.extend(item.jobRegions)
+    jobSalariesList.extend(item.jobSalaries) 
+
+locationsdf = pd.read_excel('locations.xlsx').iloc[:-1, :]  # last row is redundant
+jobLocationsDict = locationsdf.to_dict()['jobLocations']
+
+for i, j in jobLocationsDict['jobLocations'].items():
+    jobLocationsDict['jobLocations'][i] = j.replace('\xa0', ' ')
+
+for location in jobLocationsDict:
+    
 
 internships = {
     'jobNames': jobNamesList,
     'jobDescs': jobDescsList,
     'companyNames': companyNamesList,
-    'jobRegions': jobLocationsList,
+    'jobRegions': jobRegionsList,
+    'jobLocations': jobLocationsDict,
     'jobSalaries': jobSalariesList
 }
-
+print(internships['jobLocations'])
 df = pd.DataFrame(internships)
-with pd.ExcelWriter("internships.xlsx", engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
+with pd.ExcelWriter("internships.xlsx", engine="openpyxl", mode="w") as writer:
     df.to_excel(writer)
 
 os.system("start EXCEL.EXE internships.xlsx")

@@ -84,23 +84,29 @@ for page in pages:
     jobSalariesList.extend(item.jobSalaries) 
 
 locationsdf = pd.read_excel('locations.xlsx').iloc[:-1, :]  # last row is redundant
-jobLocationsDict = locationsdf.to_dict()['jobLocations']
+df = locationsdf.to_dict()
 
-for i, j in jobLocationsDict['jobLocations'].items():
-    jobLocationsDict['jobLocations'][i] = j.replace('\xa0', ' ')
+companyNames = df['companyNames']
+jobLocations = df['jobLocations']
 
-for location in jobLocationsDict:
-    
+jobLocationsDict = {}
+
+for i, j in zip(companyNames.values(), jobLocations.values()):
+    jobLocationsDict[i] = j.replace('\xa0', ' ')
+
+for i in companyNamesList:
+    if i in jobLocationsDict.keys():
+        jobLocationsList.append(jobLocationsDict[i])
 
 internships = {
     'jobNames': jobNamesList,
     'jobDescs': jobDescsList,
     'companyNames': companyNamesList,
     'jobRegions': jobRegionsList,
-    'jobLocations': jobLocationsDict,
+    'jobLocations': jobLocationsList,
     'jobSalaries': jobSalariesList
 }
-print(internships['jobLocations'])
+
 df = pd.DataFrame(internships)
 with pd.ExcelWriter("internships.xlsx", engine="openpyxl", mode="w") as writer:
     df.to_excel(writer)
